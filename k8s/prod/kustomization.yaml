@@ -14,6 +14,8 @@ resources:
 # Production-specific labels
 commonLabels:
   environment: production
+  wecrew.io/company: wecrew
+  wecrew.io/team: wecrew-incident-team
 
 # Production image tags (use specific versions, not 'latest')
 images:

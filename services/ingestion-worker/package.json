@@ -26,6 +26,11 @@
     "typescript": "^5.3.3",
     "tsx": "^4.7.0"
   },
+  "author": "wecrew",
+  "contributors": [
+    "wecrew-incident-team"
+  ],
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"
   }

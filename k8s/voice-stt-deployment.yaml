@@ -6,6 +6,8 @@ metadata:
   labels:
     app: voice-stt
     app.kubernetes.io/part-of: voice-saas
+    wecrew.io/company: wecrew
+    wecrew.io/team: wecrew-incident-team
 spec:
   replicas: 1
   selector:
@@ -16,6 +18,8 @@ spec:
       labels:
         app: voice-stt
         app.kubernetes.io/part-of: voice-saas
+        wecrew.io/company: wecrew
+        wecrew.io/team: wecrew-incident-team
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8001"
@@ -71,6 +75,8 @@ metadata:
   labels:
     app: voice-stt
     app.kubernetes.io/part-of: voice-saas
+    wecrew.io/company: wecrew
+    wecrew.io/team: wecrew-incident-team
 spec:
   type: ClusterIP
   selector:

@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/rajkumar-madhu/finpot0-vovirv/actions/workflows/ci.yml/badge.svg)](https://github.com/rajkumar-madhu/finpot0-vovirv/actions/workflows/ci.yml)
 
+> A **wecrew** platform, developed and operated by the **wecrew-incident-team**.
+
 A multi-tenant AI Voice Agent platform. The voice pipeline is:
 
 ```
@@ -146,3 +148,14 @@ TTS_INDICF5_DEVICE=cuda  TTS_INDICF5_ENABLED=true
 - `linkedeye-voice-agent/CLAUDE.md` — Full architecture diagram and requirements
 - `Documents/VoiceAgent-SaaS-Product-Vision.md` — Product roadmap (omnichannel)
 - `Documents/LinkedEye-Folder-Structure.md` — Target directory structure
+
+## Team & Company
+
+- **Company:** wecrew
+- **Team:** wecrew-incident-team
+
+This platform is developed, deployed, and maintained by the **wecrew-incident-team** at **wecrew**.
+
+## License
+
+Proprietary — © 2026 **wecrew**. All rights reserved. See [LICENSE](LICENSE).

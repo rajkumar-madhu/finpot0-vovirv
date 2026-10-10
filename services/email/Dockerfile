@@ -17,6 +17,9 @@ RUN npm run build
 
 # Production stage
 FROM node:20-alpine AS production
+LABEL org.opencontainers.image.vendor="wecrew" \
+      org.opencontainers.image.authors="wecrew-incident-team" \
+      org.opencontainers.image.title="linkedeye-voice-agent"
 
 WORKDIR /app
 

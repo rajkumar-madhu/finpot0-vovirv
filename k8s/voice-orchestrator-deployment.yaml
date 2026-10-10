@@ -6,6 +6,8 @@ metadata:
   labels:
     app: voice-orchestrator
     app.kubernetes.io/part-of: voice-saas
+    wecrew.io/company: wecrew
+    wecrew.io/team: wecrew-incident-team
 spec:
   replicas: 2
   selector:
@@ -16,6 +18,8 @@ spec:
       labels:
         app: voice-orchestrator
         app.kubernetes.io/part-of: voice-saas
+        wecrew.io/company: wecrew
+        wecrew.io/team: wecrew-incident-team
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "4002"
@@ -75,6 +79,8 @@ metadata:
   labels:
     app: voice-orchestrator
     app.kubernetes.io/part-of: voice-saas
+    wecrew.io/company: wecrew
+    wecrew.io/team: wecrew-incident-team
 spec:
   type: ClusterIP
   selector:

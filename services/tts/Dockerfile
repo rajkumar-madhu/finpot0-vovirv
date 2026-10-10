@@ -7,6 +7,9 @@ RUN pip install --no-cache-dir --user torch --index-url https://download.pytorch
     pip install --no-cache-dir --user fastapi uvicorn pydantic pydantic-settings structlog prometheus-client httpx numpy
 
 FROM python:3.10-slim
+LABEL org.opencontainers.image.vendor="wecrew" \
+      org.opencontainers.image.authors="wecrew-incident-team" \
+      org.opencontainers.image.title="linkedeye-voice-agent"
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libsndfile1 && rm -rf /var/lib/apt/lists/* && \
     addgroup --system --gid 1001 app && adduser --system --uid 1001 app

@@ -14,6 +14,8 @@ resources:
 # Staging-specific labels
 commonLabels:
   environment: staging
+  wecrew.io/company: wecrew
+  wecrew.io/team: wecrew-incident-team
 
 # Staging image tags
 images:

@@ -65,6 +65,9 @@ RUN cd webvoice && npm ci --only=production
 # Stage 3: Final Production Image
 # ==============================================================================
 FROM ubuntu:22.04 AS production
+LABEL org.opencontainers.image.vendor="wecrew" \
+      org.opencontainers.image.authors="wecrew-incident-team" \
+      org.opencontainers.image.title="linkedeye-voice-agent"
 
 # Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive

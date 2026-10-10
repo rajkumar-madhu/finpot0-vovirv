@@ -6,6 +6,9 @@ COPY . .
 RUN npm run build
 
 FROM node:20-alpine AS production
+LABEL org.opencontainers.image.vendor="wecrew" \
+      org.opencontainers.image.authors="wecrew-incident-team" \
+      org.opencontainers.image.title="linkedeye-voice-agent"
 WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY package*.json ./

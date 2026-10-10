@@ -1,4 +1,7 @@
 FROM python:3.10-slim
+LABEL org.opencontainers.image.vendor="wecrew" \
+      org.opencontainers.image.authors="wecrew-incident-team" \
+      org.opencontainers.image.title="linkedeye-voice-agent"
 
 WORKDIR /app
 

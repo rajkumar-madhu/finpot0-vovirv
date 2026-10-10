@@ -5,6 +5,8 @@ metadata:
   namespace: fs-linkedeye
   labels:
     app.kubernetes.io/part-of: voice-saas
+    wecrew.io/company: wecrew
+    wecrew.io/team: wecrew-incident-team
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"

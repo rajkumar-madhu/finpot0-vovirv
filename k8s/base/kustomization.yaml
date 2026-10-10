@@ -37,6 +37,8 @@ resources:
 commonLabels:
   app.kubernetes.io/part-of: linkedeye-voice-agent
   app.kubernetes.io/managed-by: kustomize
+  wecrew.io/company: wecrew
+  wecrew.io/team: wecrew-incident-team
 
 images:
   - name: voice-saas/auth

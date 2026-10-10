@@ -44,6 +44,11 @@
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0"
   },
+  "author": "wecrew",
+  "contributors": [
+    "wecrew-incident-team"
+  ],
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"
   }
