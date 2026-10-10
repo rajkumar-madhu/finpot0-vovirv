@@ -1,0 +1,61 @@
+---
+# Service Account for application workloads
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: voice-saas-app
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: voice-saas
+    app.kubernetes.io/component: serviceaccount
+---
+# Service Account for ML workloads (STT/TTS)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: voice-saas-ml
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: voice-saas
+    app.kubernetes.io/component: serviceaccount
+---
+# Role for reading configmaps and secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: voice-saas-config-reader
+  namespace: voice-saas
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+# RoleBinding for app service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: voice-saas-app-config-reader
+  namespace: voice-saas
+subjects:
+  - kind: ServiceAccount
+    name: voice-saas-app
+    namespace: voice-saas
+roleRef:
+  kind: Role
+  name: voice-saas-config-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# RoleBinding for ML service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: voice-saas-ml-config-reader
+  namespace: voice-saas
+subjects:
+  - kind: ServiceAccount
+    name: voice-saas-ml
+    namespace: voice-saas
+roleRef:
+  kind: Role
+  name: voice-saas-config-reader
+  apiGroup: rbac.authorization.k8s.io

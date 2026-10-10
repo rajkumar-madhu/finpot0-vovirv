@@ -1,0 +1,32 @@
+{
+  "name": "@voice-saas/ingestion-worker",
+  "version": "1.0.0",
+  "description": "Document ingestion worker for Voice SaaS platform",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.7.8",
+    "ioredis": "^5.3.2",
+    "zod": "^3.22.4",
+    "pino": "^8.17.2",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.3.1",
+    "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

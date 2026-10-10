@@ -1,0 +1,142 @@
+---
+# API Gateway Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  LOG_LEVEL: "info"
+  AUTH_SERVICE_URL: "http://auth-svc:4001"
+  STT_SERVICE_URL: "http://stt-svc:8001"
+  TTS_SERVICE_URL: "http://tts-svc:8002"
+  RAG_SERVICE_URL: "http://rag-svc:8003"
+  FLOWISE_URL: "http://flowise-svc:3000"
+  ORCHESTRATOR_URL: "http://orchestrator-svc:4002"
+  ALLOWED_ORIGINS: "*"
+---
+# Auth Service Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: auth
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+  PORT: "4001"
+  LOG_LEVEL: "info"
+  JWT_EXPIRES_IN: "7d"
+  JWT_REFRESH_EXPIRES_IN: "30d"
+---
+# STT Service Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stt-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: stt
+    app.kubernetes.io/component: config
+data:
+  STT_HOST: "0.0.0.0"
+  STT_PORT: "8001"
+  STT_ENVIRONMENT: "production"
+  STT_WHISPER_MODEL: "large-v3"
+  STT_WHISPER_DEVICE: "cuda"
+  STT_WHISPER_COMPUTE_TYPE: "float16"
+  STT_LOG_LEVEL: "INFO"
+  STT_LOG_FORMAT: "json"
+---
+# TTS Service Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tts-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+    app.kubernetes.io/component: config
+data:
+  TTS_HOST: "0.0.0.0"
+  TTS_PORT: "8002"
+  TTS_ENVIRONMENT: "production"
+  TTS_INDICF5_DEVICE: "cuda"
+  TTS_INDICF5_ENABLED: "true"
+  TTS_PIPER_ENABLED: "true"
+  TTS_LOG_LEVEL: "INFO"
+  TTS_LOG_FORMAT: "json"
+---
+# RAG Service Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: rag
+    app.kubernetes.io/component: config
+data:
+  RAG_HOST: "0.0.0.0"
+  RAG_PORT: "8003"
+  RAG_ENVIRONMENT: "production"
+  RAG_EMBEDDING_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+  RAG_EMBEDDING_DIMENSION: "384"
+  RAG_EMBEDDING_DEVICE: "cpu"
+  RAG_USE_OLLAMA_EMBEDDINGS: "false"
+  RAG_CHUNK_SIZE: "1000"
+  RAG_CHUNK_OVERLAP: "200"
+  RAG_LOG_LEVEL: "INFO"
+  RAG_LOG_FORMAT: "json"
+---
+# Orchestrator Service Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orchestrator-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: orchestrator
+    app.kubernetes.io/component: config
+data:
+  NODE_ENV: "production"
+  PORT: "4002"
+  LOG_LEVEL: "info"
+  AUTH_SERVICE_URL: "http://auth-svc:4001"
+  STT_SERVICE_URL: "http://stt-svc:8001"
+  TTS_SERVICE_URL: "http://tts-svc:8002"
+  RAG_SERVICE_URL: "http://rag-svc:8003"
+  FLOWISE_URL: "http://flowise-svc:3000"
+  DEFAULT_MODEL: "haiku"
+  SIMPLE_QUERY_THRESHOLD: "100"
+  CONVERSATION_TTL_SECONDS: "3600"
+  MAX_CONVERSATION_MESSAGES: "50"
+  STT_TIMEOUT_MS: "30000"
+  TTS_TIMEOUT_MS: "30000"
+  RAG_TIMEOUT_MS: "10000"
+  LLM_TIMEOUT_MS: "60000"
+  ALLOWED_ORIGINS: "*"
+---
+# Flowise Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flowise-config
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: flowise
+    app.kubernetes.io/component: config
+data:
+  PORT: "3000"
+  DATABASE_TYPE: "postgres"
+  DATABASE_PORT: "5432"
+  DATABASE_HOST: "postgres-svc.voice-saas-data.svc.cluster.local"
+  DATABASE_NAME: "voice_saas"
+  FLOWISE_SECRETKEY_OVERWRITE: "voice-saas-secret-key"

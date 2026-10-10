@@ -1,0 +1,119 @@
+# Prometheus Configuration for Voice SaaS Platform
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'voice-saas'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load alert rules
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node.js Services
+  - job_name: 'auth'
+    static_configs:
+      - targets: ['auth:4001']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'auth'
+
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:4000']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'api-gateway'
+
+  - job_name: 'orchestrator'
+    static_configs:
+      - targets: ['orchestrator:4002']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'orchestrator'
+
+  - job_name: 'email'
+    static_configs:
+      - targets: ['email:4003']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'email'
+
+  # Python ML Services
+  - job_name: 'stt'
+    static_configs:
+      - targets: ['stt:8001']
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'stt'
+
+  - job_name: 'tts'
+    static_configs:
+      - targets: ['tts:8002']
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'tts'
+
+  - job_name: 'rag'
+    static_configs:
+      - targets: ['rag:8003']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'rag'
+
+  # AI/LLM Services
+  - job_name: 'flowise'
+    static_configs:
+      - targets: ['flowise:3000']
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'flowise'
+
+  # Data Layer (if exporters are available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'postgres'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'redis'

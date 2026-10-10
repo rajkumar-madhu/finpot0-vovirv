@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webvoice
+  namespace: voice-saas
+  labels:
+    app: webvoice
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webvoice
+  template:
+    metadata:
+      labels:
+        app: webvoice
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4004"
+    spec:
+      containers:
+        - name: webvoice
+          image: voice-saas/webvoice:latest
+          ports:
+            - containerPort: 4004
+          envFrom:
+            - configMapRef:
+                name: voice-saas-config
+            - secretRef:
+                name: voice-saas-secrets
+          env:
+            - name: PORT
+              value: "4004"
+            - name: WIDGET_ALLOWED_ORIGINS
+              value: "https://app.linkedeye.com,https://*.linkedeye.com"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 4004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 4004
+            initialDelaySeconds: 5
+            periodSeconds: 5

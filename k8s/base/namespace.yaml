@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: voice-saas
+  labels:
+    app.kubernetes.io/name: voice-saas
+    app.kubernetes.io/part-of: linkedeye-voice-agent

@@ -1,0 +1,438 @@
+version: "3.9"
+
+services:
+  # ============================================
+  # Data Layer
+  # ============================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: voice-saas-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: voice_saas
+    # ports:  # host port 5432 in use by host postgres
+    #   - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/auth/src/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voice-saas
+
+  redis:
+    image: redis:7-alpine
+    container_name: voice-saas-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voice-saas
+
+  # ============================================
+  # Application Services
+  # ============================================
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: voice-saas-auth
+    ports:
+      - "4001:4001"
+    environment:
+      PORT: 4001
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/voice_saas
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production-min-32-chars
+      JWT_EXPIRES_IN: 7d
+      JWT_REFRESH_EXPIRES_IN: 30d
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - voice-saas
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: voice-saas-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production-min-32-chars
+      AUTH_SERVICE_URL: http://auth:4001
+      STT_SERVICE_URL: http://stt:8001
+      TTS_SERVICE_URL: http://tts:8002
+      RAG_SERVICE_URL: http://rag:8003
+      FLOWISE_URL: http://flowise:3000
+      ORCHESTRATOR_URL: http://orchestrator:4002
+      EMAIL_SERVICE_URL: http://email:4003
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+      LOG_LEVEL: debug
+    depends_on:
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - voice-saas
+
+  stt:
+    build:
+      context: ./services/stt
+      dockerfile: Dockerfile
+    container_name: voice-saas-stt
+    ports:
+      - "8001:8001"
+    environment:
+      STT_HOST: 0.0.0.0
+      STT_PORT: 8001
+      STT_ENVIRONMENT: development
+      STT_WHISPER_MODEL: base
+      STT_WHISPER_DEVICE: cpu
+      STT_WHISPER_COMPUTE_TYPE: int8
+      STT_REDIS_URL: redis://redis:6379
+      STT_LOG_LEVEL: DEBUG
+    volumes:
+      - whisper_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:8001/health').raise_for_status()"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+    networks:
+      - voice-saas
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  tts:
+    build:
+      context: ./services/tts
+      dockerfile: Dockerfile
+    container_name: voice-saas-tts
+    ports:
+      - "8002:8002"
+    environment:
+      TTS_HOST: 0.0.0.0
+      TTS_PORT: 8002
+      TTS_ENVIRONMENT: development
+      TTS_INDICF5_DEVICE: cpu
+      TTS_INDICF5_ENABLED: "false"
+      TTS_INDICF5_MODEL: ai4bharat/IndicF5-7B
+      TTS_INDICF5_PROMPTS_DIR: /prompts
+      TTS_PIPER_MODEL: en_US-lessac-medium
+      TTS_PIPER_DATA_DIR: /app/models
+      TTS_REDIS_URL: redis://redis:6379
+      TTS_LOG_LEVEL: DEBUG
+    volumes:
+      - tts_cache:/root/.cache/huggingface
+      - ./services/tts/prompts:/prompts
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:8002/health').raise_for_status()"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+    networks:
+      - voice-saas
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  rag:
+    build:
+      context: ./services/rag
+      dockerfile: Dockerfile
+    container_name: voice-saas-rag
+    ports:
+      - "8003:8003"
+    environment:
+      RAG_HOST: 0.0.0.0
+      RAG_PORT: 8003
+      RAG_ENVIRONMENT: development
+      RAG_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/voice_saas
+      RAG_EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
+      RAG_EMBEDDING_DEVICE: cpu
+      RAG_EMBEDDING_DIMENSION: 384
+      RAG_PGVECTOR_MIN_SCORE: "0.5"
+      RAG_PGVECTOR_DEFAULT_TOP_K: "5"
+      RAG_CHUNK_SIZE: "512"
+      RAG_CHUNK_OVERLAP: "64"
+      RAG_LOG_LEVEL: DEBUG
+    volumes:
+      - embedding_cache:/root/.cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:8003/health').raise_for_status()"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+    networks:
+      - voice-saas
+
+  orchestrator:
+    build:
+      context: ./services/orchestrator
+      dockerfile: Dockerfile
+    container_name: voice-saas-orchestrator
+    ports:
+      - "4002:4002"
+    environment:
+      PORT: 4002
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      STT_URL: http://stt:8001
+      TTS_URL: http://tts:8002
+      RAG_URL: http://rag:8003
+      AUTH_URL: http://auth:4001
+      FLOWISE_URL: http://flowise:3000
+      FLOWISE_API_KEY: ""
+      MAX_AUDIO_SIZE_MB: "50"
+      LOG_LEVEL: debug
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - voice-saas
+
+  email:
+    build:
+      context: ./services/email
+      dockerfile: Dockerfile
+    container_name: voice-saas-email
+    ports:
+      - "4003:4003"
+    environment:
+      PORT: 4003
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/voice_saas
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production-min-32-chars
+      EMAIL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      IMAP_POLL_INTERVAL_SECONDS: 60
+      IMAP_MAX_EMAILS_PER_POLL: 100
+      SMTP_QUEUE_CONCURRENCY: 5
+      SMTP_MAX_RETRIES: 3
+      ATTACHMENT_STORAGE_PATH: /app/data/attachments
+      ATTACHMENT_MAX_SIZE_MB: 25
+      ORCHESTRATOR_URL: http://orchestrator:4002
+      LOG_LEVEL: debug
+    volumes:
+      - email_attachments:/app/data/attachments
+      - ./services/email/src/db/migrations:/docker-entrypoint-initdb.d/email
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - voice-saas
+
+  ingestion-worker:
+    build:
+      context: ./services/ingestion-worker
+      dockerfile: Dockerfile
+    container_name: voice-saas-ingestion-worker
+    environment:
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      RAG_URL: http://rag:8003
+      INGESTION_QUEUE_NAME: document-ingestion
+      INGESTION_CONCURRENCY: "3"
+      LOG_LEVEL: debug
+    depends_on:
+      redis:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    networks:
+      - voice-saas
+
+  webvoice:
+    build:
+      context: ./services/webvoice
+      dockerfile: Dockerfile
+    container_name: voice-saas-webvoice
+    ports:
+      - "4004:4004"
+    environment:
+      PORT: 4004
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production-min-32-chars
+      STT_SERVICE_URL: http://stt:8001
+      TTS_SERVICE_URL: http://tts:8002
+      ORCHESTRATOR_URL: http://orchestrator:4002
+      SESSION_TIMEOUT_SECONDS: 300
+      MAX_SESSION_DURATION_SECONDS: 1800
+      MAX_CONCURRENT_SESSIONS_PER_TENANT: 100
+      AUDIO_SAMPLE_RATE: 16000
+      VAD_SILENCE_THRESHOLD_MS: 1500
+      WIDGET_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:8080
+      LOG_LEVEL: debug
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - voice-saas
+
+  # ============================================
+  # AI/LLM Services
+  # ============================================
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: voice-saas-flowise
+    ports:
+      - "3000:3000"
+    environment:
+      FLOWISE_USERNAME: admin
+      FLOWISE_PASSWORD: admin123
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: voice_saas
+    volumes:
+      - flowise_data:/root/.flowise
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - voice-saas
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: voice-saas-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - voice-saas
+
+  # ============================================
+  # Monitoring
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: voice-saas-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - voice-saas
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: voice-saas-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - voice-saas
+
+volumes:
+  postgres_data:
+  redis_data:
+  whisper_cache:
+  tts_cache:
+  embedding_cache:
+  flowise_data:
+  ollama_data:
+  prometheus_data:
+  grafana_data:
+  email_attachments:
+
+networks:
+  voice-saas:
+    driver: bridge

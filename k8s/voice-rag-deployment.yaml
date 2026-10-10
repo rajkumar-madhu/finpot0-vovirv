@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-rag
+  namespace: fs-linkedeye
+  labels:
+    app: voice-rag
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: voice-rag
+  template:
+    metadata:
+      labels:
+        app: voice-rag
+        app.kubernetes.io/part-of: voice-saas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8003"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: voice-rag
+          image: voice-saas/rag:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8003
+              name: http
+          env:
+            - name: RAG_HOST
+              value: "0.0.0.0"
+            - name: RAG_PORT
+              value: "8003"
+            - name: RAG_ENVIRONMENT
+              value: "production"
+            - name: RAG_DATABASE_URL
+              value: "postgresql://linkedeye:linkedeye@postgres.fs-linkedeye.svc.cluster.local:5432/voice_saas"
+            - name: RAG_EMBEDDING_MODEL
+              value: "BAAI/bge-small-en-v1.5"
+            - name: RAG_EMBEDDING_DEVICE
+              value: "cpu"
+            - name: RAG_EMBEDDING_DIMENSION
+              value: "384"
+            - name: RAG_PGVECTOR_MIN_SCORE
+              value: "0.5"
+            - name: RAG_PGVECTOR_DEFAULT_TOP_K
+              value: "5"
+            - name: RAG_CHUNK_SIZE
+              value: "512"
+            - name: RAG_CHUNK_OVERLAP
+              value: "64"
+            - name: RAG_LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-rag
+  namespace: fs-linkedeye
+  labels:
+    app: voice-rag
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  type: ClusterIP
+  selector:
+    app: voice-rag
+  ports:
+    - port: 8003
+      targetPort: 8003
+      protocol: TCP
+      name: http

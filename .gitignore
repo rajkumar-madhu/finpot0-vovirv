@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+
+# Node build output
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment / secrets (keep the .example templates)
+.env
+.env.*
+!.env.example
+
+# Local overrides
+*.local
+*.local.*
+**/.claude/settings.local.json
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+
+# Runtime data / caches
+data/
+caches/
+*.sqlite
+*.db
+*.pid
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

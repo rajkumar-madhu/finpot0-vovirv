@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flowise
+  namespace: voice-saas
+  labels:
+    app: flowise
+    tier: ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flowise
+  template:
+    metadata:
+      labels:
+        app: flowise
+        tier: ai
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+    spec:
+      containers:
+        - name: flowise
+          image: flowiseai/flowise:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: FLOWISE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: voice-saas-secrets
+                  key: FLOWISE_USERNAME
+            - name: FLOWISE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: voice-saas-secrets
+                  key: FLOWISE_PASSWORD
+            - name: DATABASE_TYPE
+              value: "postgres"
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: voice-saas-config
+                  key: DATABASE_HOST
+            - name: DATABASE_PORT
+              value: "5432"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: voice-saas-secrets
+                  key: DB_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: voice-saas-secrets
+                  key: DB_PASSWORD
+            - name: DATABASE_NAME
+              value: "flowise"
+            - name: SECRETKEY_PATH
+              value: "/app/.flowise"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: voice-saas-secrets
+                  key: ANTHROPIC_API_KEY
+          volumeMounts:
+            - name: flowise-data
+              mountPath: /app/.flowise
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: flowise-data
+          persistentVolumeClaim:
+            claimName: flowise-data-pvc

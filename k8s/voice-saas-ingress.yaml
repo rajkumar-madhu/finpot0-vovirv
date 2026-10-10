@@ -1,0 +1,56 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: voice-saas-ingress
+  namespace: fs-linkedeye
+  labels:
+    app.kubernetes.io/part-of: voice-saas
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/websocket-services: "voice-webvoice"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - fs-le-dev-voicesaas.finspot.in
+      secretName: fs-secret
+  rules:
+    - host: fs-le-dev-voicesaas.finspot.in
+      http:
+        paths:
+          # Web Voice UI (root)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: voice-webvoice
+                port:
+                  number: 4004
+          # Auth API
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: voice-auth
+                port:
+                  number: 4001
+          # STT API
+          - path: /stt
+            pathType: Prefix
+            backend:
+              service:
+                name: voice-stt
+                port:
+                  number: 8001
+          # TTS API
+          - path: /tts
+            pathType: Prefix
+            backend:
+              service:
+                name: voice-tts
+                port:
+                  number: 8002

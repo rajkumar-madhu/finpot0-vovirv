@@ -1,0 +1,311 @@
+---
+# Prometheus Alert Rules for Voice SaaS Platform
+groups:
+  # ============================================
+  # Voice Pipeline Alerts
+  # ============================================
+  - name: voice-pipeline
+    rules:
+      - alert: HighVoicePipelineLatency
+        expr: histogram_quantile(0.95, sum(rate(orchestrator_voice_pipeline_duration_seconds_bucket[5m])) by (le)) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: orchestrator
+        annotations:
+          summary: "High voice pipeline latency"
+          description: "P95 latency is {{ $value | printf \"%.2f\" }}s (threshold: 10s)"
+
+      - alert: VoicePipelineErrorRateHigh
+        expr: sum(rate(orchestrator_voice_pipeline_total{status="error"}[5m])) / sum(rate(orchestrator_voice_pipeline_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: orchestrator
+        annotations:
+          summary: "Voice pipeline error rate > 5%"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}%"
+
+      - alert: NoVoicePipelineRequests
+        expr: sum(rate(orchestrator_voice_pipeline_total[10m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+          service: orchestrator
+        annotations:
+          summary: "No voice pipeline requests in 15 minutes"
+          description: "The voice pipeline has not received any requests"
+
+  # ============================================
+  # STT Service Alerts
+  # ============================================
+  - name: stt-service
+    rules:
+      - alert: STTHighLatency
+        expr: histogram_quantile(0.95, sum(rate(orchestrator_stt_latency_seconds_bucket[5m])) by (le)) > 15
+        for: 5m
+        labels:
+          severity: warning
+          service: stt
+        annotations:
+          summary: "STT service high latency"
+          description: "STT P95 latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: STTServiceUnavailable
+        expr: up{job="stt"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: stt
+        annotations:
+          summary: "STT service is unavailable"
+          description: "The STT service has been down for more than 2 minutes"
+
+      - alert: STTModelNotLoaded
+        expr: stt_model_loaded == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: stt
+        annotations:
+          summary: "STT Whisper model not loaded"
+          description: "The Whisper model failed to load"
+
+  # ============================================
+  # TTS Service Alerts
+  # ============================================
+  - name: tts-service
+    rules:
+      - alert: TTSHighLatency
+        expr: histogram_quantile(0.95, sum(rate(orchestrator_tts_latency_seconds_bucket[5m])) by (le)) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: tts
+        annotations:
+          summary: "TTS service high latency"
+          description: "TTS P95 latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: TTSServiceUnavailable
+        expr: up{job="tts"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: tts
+        annotations:
+          summary: "TTS service is unavailable"
+          description: "The TTS service has been down for more than 2 minutes"
+
+      - alert: TTSIndicF5NotLoaded
+        expr: tts_indicf5_loaded == 0 and tts_indicf5_enabled == 1
+        for: 5m
+        labels:
+          severity: warning
+          service: tts
+        annotations:
+          summary: "IndicF5 TTS model not loaded"
+          description: "IndicF5 is enabled but the model failed to load"
+
+  # ============================================
+  # RAG Service Alerts
+  # ============================================
+  - name: rag-service
+    rules:
+      - alert: RAGHighLatency
+        expr: histogram_quantile(0.95, sum(rate(orchestrator_rag_latency_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: rag
+        annotations:
+          summary: "RAG service high latency"
+          description: "RAG P95 latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: RAGServiceUnavailable
+        expr: up{job="rag"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: rag
+        annotations:
+          summary: "RAG service is unavailable"
+          description: "The RAG service has been down for more than 2 minutes"
+
+      - alert: RAGNoResults
+        expr: histogram_quantile(0.50, sum(rate(rag_search_results_count_bucket[30m])) by (le)) == 0
+        for: 30m
+        labels:
+          severity: info
+          service: rag
+        annotations:
+          summary: "RAG returning no results"
+          description: "Median RAG search results are 0 - check knowledge base"
+
+  # ============================================
+  # API Gateway Alerts
+  # ============================================
+  - name: api-gateway
+    rules:
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="api-gateway"}[5m])) by (le)) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: api-gateway
+        annotations:
+          summary: "API Gateway high latency"
+          description: "P95 latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: High4xxErrorRate
+        expr: sum(rate(http_requests_total{job="api-gateway", status=~"4.."}[5m])) / sum(rate(http_requests_total{job="api-gateway"}[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: api-gateway
+        annotations:
+          summary: "High 4xx error rate"
+          description: "4xx error rate is {{ $value | printf \"%.2f\" }}%"
+
+      - alert: High5xxErrorRate
+        expr: sum(rate(http_requests_total{job="api-gateway", status=~"5.."}[5m])) / sum(rate(http_requests_total{job="api-gateway"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: api-gateway
+        annotations:
+          summary: "High 5xx error rate"
+          description: "5xx error rate is {{ $value | printf \"%.2f\" }}%"
+
+  # ============================================
+  # Auth Service Alerts
+  # ============================================
+  - name: auth-service
+    rules:
+      - alert: HighAuthFailureRate
+        expr: sum(rate(auth_attempts_total{status="failure"}[5m])) / sum(rate(auth_attempts_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          service: auth
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Auth failure rate is {{ $value | printf \"%.2f\" }}%"
+
+      - alert: AuthServiceUnavailable
+        expr: up{job="auth"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: auth
+        annotations:
+          summary: "Auth service is unavailable"
+          description: "The auth service has been down for more than 2 minutes"
+
+  # ============================================
+  # Infrastructure Alerts
+  # ============================================
+  - name: infrastructure
+    rules:
+      - alert: PodRestartingFrequently
+        expr: increase(kube_pod_container_status_restarts_total{namespace="voice-saas"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod restarting frequently"
+          description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{namespace="voice-saas", condition="true"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod not ready"
+          description: "Pod {{ $labels.pod }} is not ready"
+
+      - alert: HighCPUUsage
+        expr: sum(rate(container_cpu_usage_seconds_total{namespace="voice-saas"}[5m])) by (pod) / sum(kube_pod_container_resource_limits{namespace="voice-saas", resource="cpu"}) by (pod) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "Pod {{ $labels.pod }} CPU usage is above 90%"
+
+      - alert: HighMemoryUsage
+        expr: sum(container_memory_working_set_bytes{namespace="voice-saas"}) by (pod) / sum(kube_pod_container_resource_limits{namespace="voice-saas", resource="memory"}) by (pod) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Pod {{ $labels.pod }} memory usage is above 90%"
+
+  # ============================================
+  # Database Alerts
+  # ============================================
+  - name: database
+    rules:
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is not responding"
+
+      - alert: PostgreSQLHighConnections
+        expr: sum(pg_stat_activity_count) / pg_settings_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "PostgreSQL high connection count"
+          description: "Connection usage is at {{ $value | printf \"%.2f\" }}%"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis is not responding"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is at {{ $value | printf \"%.2f\" }}%"
+
+  # ============================================
+  # Cost Alerts
+  # ============================================
+  - name: cost-monitoring
+    rules:
+      - alert: HighTokenUsage
+        expr: sum(increase(orchestrator_tokens_used_total[1h])) > 100000
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High token usage"
+          description: "Token usage in the last hour: {{ $value }}"
+
+      - alert: DailyCostExceeded
+        expr: sum(increase(orchestrator_tokens_used_total[24h])) * 0.00002 > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daily API cost exceeded $50"
+          description: "Estimated daily cost: ${{ $value | printf \"%.2f\" }}"

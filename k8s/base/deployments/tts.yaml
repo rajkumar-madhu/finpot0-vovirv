@@ -1,0 +1,183 @@
+---
+# TTS (IndicF5 + Piper) Service Deployment - GPU Workload
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tts
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+    app.kubernetes.io/component: ml
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tts
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tts
+        app.kubernetes.io/component: ml
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: voice-saas-ml
+      # GPU node affinity
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: tts
+          image: voice-saas/tts:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8002
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: tts-config
+          env:
+            - name: TTS_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: REDIS_URL
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: huggingface-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "6Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "2000m"
+              memory: "12Gi"
+              nvidia.com/gpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: tts-cache
+              mountPath: /root/.cache/huggingface
+            - name: prompts
+              mountPath: /prompts
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: tts-cache
+          persistentVolumeClaim:
+            claimName: tts-cache-pvc
+        - name: prompts
+          persistentVolumeClaim:
+            claimName: voice-prompts-pvc
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: tts
+                topologyKey: kubernetes.io/hostname
+---
+# TTS Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: tts-svc
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+    app.kubernetes.io/component: service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: tts
+---
+# TTS HPA (GPU-aware)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tts-hpa
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tts
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+---
+# TTS Cache PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tts-cache-pvc
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 30Gi
+---
+# Voice Prompts PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: voice-prompts-pvc
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: tts
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi

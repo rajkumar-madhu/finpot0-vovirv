@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-orchestrator
+  namespace: fs-linkedeye
+  labels:
+    app: voice-orchestrator
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: voice-orchestrator
+  template:
+    metadata:
+      labels:
+        app: voice-orchestrator
+        app.kubernetes.io/part-of: voice-saas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4002"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: voice-orchestrator
+          image: voice-saas/orchestrator:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4002
+              name: http
+          env:
+            - name: PORT
+              value: "4002"
+            - name: NODE_ENV
+              value: "production"
+            - name: REDIS_URL
+              value: "redis://:REDIS_PASSWORD@redis.fs-linkedeye.svc.cluster.local:6379/1"
+            - name: STT_URL
+              value: "http://voice-stt.fs-linkedeye.svc.cluster.local:8001"
+            - name: TTS_URL
+              value: "http://voice-tts.fs-linkedeye.svc.cluster.local:8002"
+            - name: RAG_URL
+              value: "http://voice-rag.fs-linkedeye.svc.cluster.local:8003"
+            - name: AUTH_URL
+              value: "http://voice-auth.fs-linkedeye.svc.cluster.local:4001"
+            - name: FLOWISE_URL
+              value: "http://flowise.fs-linkedeye.svc.cluster.local:3000"
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-orchestrator
+  namespace: fs-linkedeye
+  labels:
+    app: voice-orchestrator
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  type: ClusterIP
+  selector:
+    app: voice-orchestrator
+  ports:
+    - port: 4002
+      targetPort: 4002
+      protocol: TCP
+      name: http

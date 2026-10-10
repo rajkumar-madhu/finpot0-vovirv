@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-tts
+  namespace: fs-linkedeye
+  labels:
+    app: voice-tts
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voice-tts
+  template:
+    metadata:
+      labels:
+        app: voice-tts
+        app.kubernetes.io/part-of: voice-saas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: voice-tts
+          image: voice-saas/tts:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8002
+              name: http
+          env:
+            - name: TTS_PORT
+              value: "8002"
+            - name: TTS_ENVIRONMENT
+              value: "production"
+            - name: TTS_PIPER_MODEL
+              value: "en_US-lessac-medium"
+            - name: TTS_LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-tts
+  namespace: fs-linkedeye
+  labels:
+    app: voice-tts
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  type: ClusterIP
+  selector:
+    app: voice-tts
+  ports:
+    - port: 8002
+      targetPort: 8002
+      protocol: TCP
+      name: http

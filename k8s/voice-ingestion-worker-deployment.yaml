@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-ingestion-worker
+  namespace: fs-linkedeye
+  labels:
+    app: voice-ingestion-worker
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voice-ingestion-worker
+  template:
+    metadata:
+      labels:
+        app: voice-ingestion-worker
+        app.kubernetes.io/part-of: voice-saas
+    spec:
+      containers:
+        - name: voice-ingestion-worker
+          image: voice-saas/ingestion-worker:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: REDIS_URL
+              value: "redis://:REDIS_PASSWORD@redis.fs-linkedeye.svc.cluster.local:6379/1"
+            - name: RAG_URL
+              value: "http://voice-rag.fs-linkedeye.svc.cluster.local:8003"
+            - name: INGESTION_QUEUE_NAME
+              value: "document-ingestion"
+            - name: INGESTION_CONCURRENCY
+              value: "3"
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

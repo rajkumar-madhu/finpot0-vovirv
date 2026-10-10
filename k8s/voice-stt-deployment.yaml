@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-stt
+  namespace: fs-linkedeye
+  labels:
+    app: voice-stt
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voice-stt
+  template:
+    metadata:
+      labels:
+        app: voice-stt
+        app.kubernetes.io/part-of: voice-saas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: voice-stt
+          image: voice-saas/stt:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: STT_PORT
+              value: "8001"
+            - name: STT_ENVIRONMENT
+              value: "production"
+            - name: STT_WHISPER_MODEL
+              value: "base"
+            - name: STT_WHISPER_DEVICE
+              value: "cpu"
+            - name: STT_WHISPER_COMPUTE_TYPE
+              value: "int8"
+            - name: STT_LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-stt
+  namespace: fs-linkedeye
+  labels:
+    app: voice-stt
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  type: ClusterIP
+  selector:
+    app: voice-stt
+  ports:
+    - port: 8001
+      targetPort: 8001
+      protocol: TCP
+      name: http

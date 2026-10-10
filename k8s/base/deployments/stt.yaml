@@ -1,0 +1,162 @@
+---
+# STT (Whisper) Service Deployment - GPU Workload
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stt
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: stt
+    app.kubernetes.io/component: ml
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stt
+        app.kubernetes.io/component: ml
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: voice-saas-ml
+      # GPU node affinity
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: stt
+          image: voice-saas/stt:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: stt-config
+          env:
+            - name: STT_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: REDIS_URL
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: huggingface-token
+                  key: HF_TOKEN
+                  optional: true
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "4Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "2000m"
+              memory: "8Gi"
+              nvidia.com/gpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: whisper-cache
+              mountPath: /root/.cache/huggingface
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: whisper-cache
+          persistentVolumeClaim:
+            claimName: whisper-cache-pvc
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: stt
+                topologyKey: kubernetes.io/hostname
+---
+# STT Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: stt-svc
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: stt
+    app.kubernetes.io/component: service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: stt
+---
+# STT HPA (GPU-aware)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: stt-hpa
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: stt
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stt
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+---
+# Whisper Cache PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: whisper-cache-pvc
+  namespace: voice-saas
+  labels:
+    app.kubernetes.io/name: stt
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi

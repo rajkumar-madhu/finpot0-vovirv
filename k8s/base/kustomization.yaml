@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - rbac/service-account.yaml
+  - configmaps/common.yaml
+  - secrets/secrets.yaml
+  - pvcs/flowise-data-pvc.yaml
+  - pvcs/tts-models-pvc.yaml
+  - pvcs/email-attachments-pvc.yaml
+  - deployments/auth.yaml
+  - deployments/api-gateway.yaml
+  - deployments/orchestrator.yaml
+  - deployments/email.yaml
+  - deployments/webvoice.yaml
+  - deployments/stt.yaml
+  - deployments/tts.yaml
+  - deployments/rag.yaml
+  - deployments/flowise.yaml
+  - services/auth.yaml
+  - services/api-gateway.yaml
+  - services/orchestrator.yaml
+  - services/email.yaml
+  - services/webvoice.yaml
+  - services/stt.yaml
+  - services/tts.yaml
+  - services/rag.yaml
+  - services/flowise.yaml
+  - ingress/ingress.yaml
+  - hpa/auth-hpa.yaml
+  - hpa/api-gateway-hpa.yaml
+  - hpa/orchestrator-hpa.yaml
+  - hpa/webvoice-hpa.yaml
+  - network-policies/default-deny.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: linkedeye-voice-agent
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: voice-saas/auth
+    newTag: latest
+  - name: voice-saas/api-gateway
+    newTag: latest
+  - name: voice-saas/orchestrator
+    newTag: latest
+  - name: voice-saas/email
+    newTag: latest
+  - name: voice-saas/webvoice
+    newTag: latest
+  - name: voice-saas/stt
+    newTag: latest
+  - name: voice-saas/tts
+    newTag: latest
+  - name: voice-saas/rag
+    newTag: latest

@@ -1,0 +1,141 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: voice-saas-production
+
+namespace: voice-saas
+
+# Base configuration
+resources:
+  - ../base
+
+# Production-specific labels
+commonLabels:
+  environment: production
+
+# Production image tags (use specific versions, not 'latest')
+images:
+  - name: voice-saas/auth
+    newTag: v1.0.0
+  - name: voice-saas/api-gateway
+    newTag: v1.0.0
+  - name: voice-saas/orchestrator
+    newTag: v1.0.0
+  - name: voice-saas/rag
+    newTag: v1.0.0
+  - name: voice-saas/stt
+    newTag: v1.0.0
+  - name: voice-saas/tts
+    newTag: v1.0.0
+
+# Production-specific patches
+patches:
+  # Increase replica counts for production
+  - target:
+      kind: Deployment
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+  - target:
+      kind: Deployment
+      name: auth
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  - target:
+      kind: Deployment
+      name: orchestrator
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+  - target:
+      kind: Deployment
+      name: rag
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  - target:
+      kind: Deployment
+      name: stt
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  - target:
+      kind: Deployment
+      name: tts
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  # Update HPA for production scale
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: api-gateway-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 5
+      - op: replace
+        path: /spec/maxReplicas
+        value: 30
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: stt-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 10
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: tts-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 10
+
+  # Production ingress host
+  - target:
+      kind: Ingress
+      name: voice-saas-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.voice-saas.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.voice-saas.example.com
+
+  # Increase resource limits for production
+  - target:
+      kind: Deployment
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2000m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+
+# ConfigMap patches for production
+configMapGenerator:
+  - name: production-config
+    behavior: create
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info

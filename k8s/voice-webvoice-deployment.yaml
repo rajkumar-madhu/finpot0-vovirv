@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-webvoice
+  namespace: fs-linkedeye
+  labels:
+    app: voice-webvoice
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voice-webvoice
+  template:
+    metadata:
+      labels:
+        app: voice-webvoice
+        app.kubernetes.io/part-of: voice-saas
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4004"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: voice-webvoice
+          image: voice-saas/webvoice:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4004
+              name: http
+          env:
+            - name: WEBVOICE_PORT
+              value: "4004"
+            - name: WEBVOICE_ENVIRONMENT
+              value: "production"
+            - name: WEBVOICE_STT_URL
+              value: "http://voice-stt.fs-linkedeye.svc.cluster.local:8001"
+            - name: WEBVOICE_TTS_URL
+              value: "http://voice-tts.fs-linkedeye.svc.cluster.local:8002"
+            - name: WEBVOICE_AUTH_URL
+              value: "http://voice-auth.fs-linkedeye.svc.cluster.local:4001"
+            - name: WEBVOICE_LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4004
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-webvoice
+  namespace: fs-linkedeye
+  labels:
+    app: voice-webvoice
+    app.kubernetes.io/part-of: voice-saas
+spec:
+  type: ClusterIP
+  selector:
+    app: voice-webvoice
+  ports:
+    - port: 4004
+      targetPort: 4004
+      protocol: TCP
+      name: http
