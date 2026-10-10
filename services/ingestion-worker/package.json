@@ -26,9 +26,9 @@
     "typescript": "^5.3.3",
     "tsx": "^4.7.0"
   },
-  "author": "wecrew",
+  "author": "wecrew <info@wecrew.in>",
   "contributors": [
-    "wecrew-incident-team"
+    "wecrew-incident-team <info@wecrew.in>"
   ],
   "license": "UNLICENSED",
   "engines": {

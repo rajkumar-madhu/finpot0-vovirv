@@ -153,6 +153,7 @@ TTS_INDICF5_DEVICE=cuda  TTS_INDICF5_ENABLED=true
 
 - **Company:** wecrew
 - **Team:** wecrew-incident-team
+- **Contact:** info@wecrew.in
 
 This platform is developed, deployed, and maintained by the **wecrew-incident-team** at **wecrew**.
 

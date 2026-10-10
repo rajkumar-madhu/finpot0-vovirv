@@ -38,9 +38,9 @@
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0"
   },
-  "author": "wecrew",
+  "author": "wecrew <info@wecrew.in>",
   "contributors": [
-    "wecrew-incident-team"
+    "wecrew-incident-team <info@wecrew.in>"
   ],
   "license": "UNLICENSED",
   "engines": {
